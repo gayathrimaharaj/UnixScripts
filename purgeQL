@@ -1,0 +1,113 @@
+#================================================================
+# HEADER
+#================================================================
+#% SYNOPSIS
+#+    ${SCRIPT_NAME} [-hv] (-m QMGR) [-q QUEUE] [-t DD:HH:mm]
+#%
+#% DESCRIPTION
+#%    Purges a Local Queue or a list of Local Queues of messages older than DD:HH:mm.
+#%    Default - All Local Queues will be cleared of messages older than 10 Days
+#%
+#% OPTIONS
+#%    -m QMGR                       Queue Manager Name
+#%    -q QUEUE                      Local Queue name
+#%                                  The default value is
+#%                                   a list of all the Local Queues
+#%                                   in the Queue Manager
+#%    -t DD:HH:mm                   Time Limit in Days:Hours:Minutes.
+#%                                   The default value is 10 Days
+#%    -h                            Print this help
+#%    -v                            Print script information
+#%
+#% EXAMPLES
+#%    ${SCRIPT_NAME} -m QMGR -q TESTQ -t 20:00:00
+#%
+#================================================================
+#- IMPLEMENTATION
+#-    version         ${SCRIPT_NAME} 0.1
+#-    author          Gayathri Maharaj
+#-    license         GNU General Public License
+#-    script_id       00001
+#-
+#================================================================
+#  HISTORY
+#     2016/03/07 : gm : Script creation
+# 
+#================================================================
+#  DEBUG OPTION
+#    set -n  # Uncomment to check your syntax, without execution.
+#    set -x  # Uncomment to debug this shell script
+#
+#================================================================
+# END_OF_HEADER
+#================================================================
+  #== needed variables ==#
+SCRIPT_HEADSIZE=$(head -200 ${0} |grep -n "^# END_OF_HEADER" | cut -f1 -d:)
+SCRIPT_NAME="$(basename ${0})"
+
+  #== usage functions ==#
+usage() { printf "Usage: "; head -${SCRIPT_HEADSIZE:-99} ${0} | grep -e "^#+" | sed -e "s/^#+[ ]*//g" -e "s/\${SCRIPT_NAME}/${SCRIPT_NAME}/g" ; }
+usagefull() { head -${SCRIPT_HEADSIZE:-99} ${0} | grep -e "^#[%+-]" | sed -e "s/^#[%+-]//g" -e "s/\${SCRIPT_NAME}/${SCRIPT_NAME}/g" ; }
+scriptinfo() { head -${SCRIPT_HEADSIZE:-99} ${0} | grep -e "^#-" | sed -e "s/^#-//g" -e "s/\${SCRIPT_NAME}/${SCRIPT_NAME}/g"; }
+
+# --- Options processing -------------------------------------------
+if [ $# == 0 ] ; then
+    usage;
+    exit 1;
+fi
+
+while getopts ":m:q:t:vh" optname
+  do
+    case "$optname" in
+      "v")
+        scriptinfo;
+        exit 0;
+        ;;
+      "h")
+        usagefull;
+        exit 0;
+        ;;
+      "m")
+        qmgr=$OPTARG
+        ;;
+      "q")
+        qlocal=$OPTARG
+        ;;
+      "t")
+        timeLimit=$OPTARG
+        ;;
+      "?")
+        echo "Unknown option ${BOLD}$OPTARG${NORM}"
+        exit 0;
+        ;;
+      ":")
+        echo "No argument value for option ${BOLD}$OPTARG${NORM}"
+        exit 0;
+        ;;
+      *)
+        echo "Unknown error while processing options"
+        exit 0;
+        ;;
+    esac
+  done
+
+shift $(($OPTIND - 1))
+
+
+# --- Body --------------------------------------------------------
+if [ -z "$qlocal" ]; then
+	qlocal="*"
+fi
+if [ -z "$timeLimit" ]; then
+	timeLimit="10:00:00"
+fi
+echo "QMGR is $qmgr"
+echo "QLOCAL is $qlocal"
+echo "TIMELIMIT is $timeLimit"
+
+./listQL -m $qmgr -q "$qlocal"|while read qname; do
+	echo ""; echo "Clearing $qname"
+	qload -m $qmgr -I $qname -f stdout -T $timeLimit 1>/dev/null
+done
+
+# -----------------------------------------------------------------

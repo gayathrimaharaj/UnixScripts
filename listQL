@@ -1,0 +1,99 @@
+#================================================================
+# HEADER
+#================================================================
+#% SYNOPSIS
+#+    ${SCRIPT_NAME} [-hv] (-m QMGR) [-q QUEUEPATTERN]
+#%
+#% DESCRIPTION
+#%    Purges a Local Queue or a list of Local Queues of messages older than DD:HH:mm.
+#%    Default - All Local Queues will be cleared of messages older than 10 Days
+#%
+#% OPTIONS
+#%    -m QMGR                       Queue Manager Name
+#%    -q QUEUEPATTERN               Local Queue name pattern
+#%                                  The default value is *
+#%                                   a list of all the Local Queues
+#%                                   in the Queue Manager
+#%    -h                            Print this help
+#%    -v                            Print script information
+#%
+#% EXAMPLES
+#%    ${SCRIPT_NAME} -m QMGR -q 'A*'
+#%    ${SCRIPT_NAME} -m QMGR -q '*'
+#%
+#================================================================
+#- IMPLEMENTATION
+#-    version         ${SCRIPT_NAME} 0.1
+#-    author          Gayathri Maharaj
+#-    license         GNU General Public License
+#-    script_id       00002
+#-
+#================================================================
+#  HISTORY
+#     2016/03/07 : gm : Script creation
+# 
+#================================================================
+#  DEBUG OPTION
+#    set -n  # Uncomment to check your syntax, without execution.
+#    set -x  # Uncomment to debug this shell script
+#
+#================================================================
+# END_OF_HEADER
+#================================================================
+  #== needed variables ==#
+SCRIPT_HEADSIZE=$(head -200 ${0} |grep -n "^# END_OF_HEADER" | cut -f1 -d:)
+SCRIPT_NAME="$(basename ${0})"
+
+  #== usage functions ==#
+usage() { printf "Usage: "; head -${SCRIPT_HEADSIZE:-99} ${0} | grep -e "^#+" | sed -e "s/^#+[ ]*//g" -e "s/\${SCRIPT_NAME}/${SCRIPT_NAME}/g" ; }
+usagefull() { head -${SCRIPT_HEADSIZE:-99} ${0} | grep -e "^#[%+-]" | sed -e "s/^#[%+-]//g" -e "s/\${SCRIPT_NAME}/${SCRIPT_NAME}/g" ; }
+scriptinfo() { head -${SCRIPT_HEADSIZE:-99} ${0} | grep -e "^#-" | sed -e "s/^#-//g" -e "s/\${SCRIPT_NAME}/${SCRIPT_NAME}/g"; }
+
+# --- Options processing -------------------------------------------
+if [ $# == 0 ] ; then
+    usage;
+    exit 1;
+fi
+
+while getopts ":m:q:vh" optname
+  do
+    case "$optname" in
+      "v")
+        scriptinfo;
+        exit 0;
+        ;;
+      "h")
+        usagefull;
+        exit 0;
+        ;;
+      "m")
+        qmgr=$OPTARG
+        ;;
+      "q")
+        qPattern=$OPTARG
+        ;;
+      "?")
+        echo "Unknown option ${BOLD}$OPTARG${NORM}"
+        exit 0;
+        ;;
+      ":")
+        echo "No argument value for option ${BOLD}$OPTARG${NORM}"
+        exit 0;
+        ;;
+      *)
+        echo "Unknown error while processing options"
+        exit 0;
+        ;;
+    esac
+  done
+
+shift $(($OPTIND - 1))
+
+
+# --- Body --------------------------------------------------------
+if [[ -z "$qPattern" ]]; then
+	qPattern="*"
+fi
+
+echo "dis ql($qPattern)"|runmqsc $qmgr|grep -E "QUEUE\("|cut -d "(" -f 2|cut -d ")" -f1|grep -vE "SYSTEM|AMQ"
+# --- Body Ends ---------------------------------------------------
