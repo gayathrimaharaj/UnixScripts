@@ -105,7 +105,7 @@ echo "QMGR is $qmgr"
 echo "QLOCAL is $qlocal"
 echo "TIMELIMIT is $timeLimit"
 
-./listQL -m $qmgr -q "$qlocal"|while read qname; do
+echo "dis ql($qlocal)"|runmqsc $qmgr|grep -E "QUEUE\("|cut -d "(" -f 2|cut -d ")" -f1|grep -vE "SYSTEM|AMQ"|while read qname; do
 	echo ""; echo "Clearing $qname"
 	qload -m $qmgr -I $qname -f stdout -T $timeLimit 1>/dev/null
 done
